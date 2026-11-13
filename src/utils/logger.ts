@@ -15,17 +15,17 @@ import {
 export const generateTraceId: () => string = uuid.v4;
 
 type ApplyTraceId = {
-  (traceId: Optional<string>): (logger: ILogger) => ILoggerWithTraceId;
-  (traceId: Optional<string>, logger: ILogger): ILoggerWithTraceId;
+  (traceId: string): (logger: ILogger) => ILoggerWithTraceId;
+  (traceId: string, logger: ILogger): ILoggerWithTraceId;
 };
 
-export const applyTraceId: ApplyTraceId = curry((traceId: string | undefined, logger: ILogger): ILoggerWithTraceId => ({
+export const applyTraceId: ApplyTraceId = curry((traceId: string, logger: ILogger): ILoggerWithTraceId => ({
   debug: logger.debug(traceId),
   info: logger.info(traceId),
   warn: logger.warn(traceId),
   error: logger.error(traceId),
   security: logger.security(traceId),
-  traceId: traceId || '0',
+  traceId: traceId,
 }));
 
 type ApplyCorrelationId = {
@@ -40,7 +40,7 @@ export const applyCorrelationId: ApplyCorrelationId = curry((correlationId: stri
   error: (eventName, operationName, data) => logger.error(correlationId, eventName, operationName, data),
   security: (eventName, operationName, data) => logger.security(correlationId, eventName, operationName, data),
   traceId: logger.traceId,
-  correlationId: correlationId || '0',
+  correlationId: correlationId,
 }));
 
 type ApplyTraceIdAndCorrelationId = {
@@ -49,14 +49,14 @@ type ApplyTraceIdAndCorrelationId = {
 };
 
 export const applyTraceIdAndCorrelationId: ApplyTraceIdAndCorrelationId = curry(
-  (traceId: string | undefined, correlationId: string | undefined, logger: ILogger): ILoggerWithTraceIdAndCorrelationId => ({
+  (traceId: string, correlationId: string, logger: ILogger): ILoggerWithTraceIdAndCorrelationId => ({
     debug: logger.debug(traceId, correlationId),
     info: logger.info(traceId, correlationId),
     warn: logger.warn(traceId, correlationId),
     error: logger.error(traceId, correlationId),
     security: logger.security(traceId, correlationId),
-    traceId: traceId || '0',
-    correlationId: correlationId || '0',
+    traceId: traceId,
+    correlationId: correlationId,
   }),
 );
 

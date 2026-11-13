@@ -29,7 +29,7 @@ describe.each(['debug', 'info', 'warn', 'error', 'security'] as const)('%s conte
     }
 
     expect(output).toHaveBeenCalledTimes(1);
-    expect(output).toHaveBeenCalledWith({ level, traceId: undefined, correlationId: undefined, eventName, operationName, data });
+    expect(output).toHaveBeenCalledWith({ level, traceId: '0', correlationId: '0', eventName, operationName, data });
   });
 
   it('supports curried operation binding on a plain logger with independent contexts', () => {
@@ -40,8 +40,8 @@ describe.each(['debug', 'info', 'warn', 'error', 'security'] as const)('%s conte
     second[level](eventName);
 
     expect(output).toHaveBeenCalledTimes(2);
-    expect(output).toHaveBeenNthCalledWith(1, { level, traceId: undefined, correlationId: undefined, eventName, operationName, data: undefined });
-    expect(output).toHaveBeenNthCalledWith(2, { level, traceId: undefined, correlationId: undefined, eventName, operationName: 'another-operation', data: undefined });
+    expect(output).toHaveBeenNthCalledWith(1, { level, traceId: '0', correlationId: '0', eventName, operationName, data: undefined });
+    expect(output).toHaveBeenNthCalledWith(2, { level, traceId: '0', correlationId: '0', eventName, operationName: 'another-operation', data: undefined });
   });
 
   it.each([undefined, 'order-123', { orderId: '123' }])('logs with trace and operation context and data %p', (data) => {
@@ -54,7 +54,7 @@ describe.each(['debug', 'info', 'warn', 'error', 'security'] as const)('%s conte
     }
 
     expect(output).toHaveBeenCalledTimes(1);
-    expect(output).toHaveBeenCalledWith({ level, traceId, correlationId: undefined, eventName, operationName, data });
+    expect(output).toHaveBeenCalledWith({ level, traceId, correlationId: '0', eventName, operationName, data });
   });
 
   it.each([undefined, 'order-123', { orderId: '123' }])('logs with trace, correlation and operation context and data %p', (data) => {
@@ -101,16 +101,16 @@ describe.each(['debug', 'info', 'warn', 'error', 'security'] as const)('%s conte
     logger[level](events.CREATED, data);
 
     expect(output).toHaveBeenCalledTimes(1);
-    expect(output).toHaveBeenCalledWith({ level, traceId, correlationId: withCorrelationId ? correlationId : undefined, eventName, operationName, data });
+    expect(output).toHaveBeenCalledWith({ level, traceId, correlationId: withCorrelationId ? correlationId : '0', eventName, operationName, data });
   });
 
-  it('uses trace ID 0 when undefined is bound', () => {
-    const logger = applyOperationName(operationName, applyTraceId(undefined, loggerMocked));
+  it('uses trace ID 0 when an empty string is bound', () => {
+    const logger = applyOperationName(operationName, applyTraceId('', loggerMocked));
 
     expect(logger.traceId).toBe('0');
     logger[level](eventName);
 
-    expect(output).toHaveBeenCalledWith({ level, traceId: undefined, correlationId: undefined, eventName, operationName, data: undefined });
+    expect(output).toHaveBeenCalledWith({ level, traceId: '', correlationId: '0', eventName, operationName, data: undefined });
   });
 
   it('uses 0 for both missing IDs through the combined helper', () => {
