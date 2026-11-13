@@ -1,93 +1,65 @@
 import { Optional } from '@bafx/utils';
 
-export type ILogFinal = (eventName: string, data: Optional<object | string>) => void;
-
 export type ILogWithTraceId = {
-  (correlationId: Optional<string>, eventName: string, operationName: string, data: Optional<object | string>): ILogFinal;
+  (correlationId: Optional<string>, eventName: string, operationName: string, data: Optional<object | string>): void;
 };
 
 export type ILogWithTraceIdAndCorrelationId = {
-  (eventName: string, operationName: string, data: Optional<object | string>): ILogFinal;
+  (eventName: string, operationName: string, data: Optional<object | string>): void;
 };
 
 export type ILogWithTraceIdAndCorrelationIdAndOperationName = {
-  (eventName: string, data: Optional<object | string>): ILogFinal;
+  (eventName: string, data?: object | string): void;
 };
 
 export type ILogWithTraceIdAndOperationName = {
-  (correlationId: Optional<string>, eventName: string, data: Optional<object | string>): ILogFinal;
+  (eventName: string, data?: object | string): void;
 };
 
 export type ILog = {
   (traceId: Optional<string>, correlationId: Optional<string>, eventName: string, operationName: string, data: Optional<object | string>): void;
   (traceId: Optional<string>, correlationId: Optional<string>): ILogWithTraceIdAndCorrelationId;
-  (traceId: Optional<string>, correlationId: Optional<string>, operationName: string): ILogWithTraceIdAndCorrelationIdAndOperationName;
-  (traceId: Optional<string>, operationName: string): ILogWithTraceIdAndOperationName;
   (traceId: Optional<string>): ILogWithTraceId;
 };
 
 export type LogLevel = 'debug' | 'warn' | 'info' | 'error' | 'security';
 
-export interface ILogger {
+export interface ILogger<TLog = ILog> {
   /**
    * **debug** level - Vhodný pro logování debugovacích informací, které se vetšinou neobjeví v produkčních log souborech
    */
-  debug: ILog;
+  debug: TLog;
   /**
    * **warn** level - Vhodný pro logování chyb se kterými se za běhu aplikace počítá
    */
-  warn: ILog;
+  warn: TLog;
   /**
    * **info** level - Vhodný pro logování běžných informativních zpráv o tom, že se něco stalo
    */
-  info: ILog;
+  info: TLog;
   /**
    * **error** level - Vhodný pro logování chyb, které by se běžně neměli stávat. Tyto log záznamy by se následně měli řešit jako incident
    */
-  error: ILog;
+  error: TLog;
   /**
    * **security** level - Vhodný pro logování bezpečnostních událostí jako jsou pokusy o neoprávněný přístup, podezřelé aktivity, nebo změny v bezpečnostních nastaveních.
    */
-  security: ILog;
+  security: TLog;
 }
 
-export interface ILoggerWithTraceId {
-  debug: ILogWithTraceId;
-  warn: ILogWithTraceId;
-  info: ILogWithTraceId;
-  error: ILogWithTraceId;
-  security: ILogWithTraceId;
+export interface ILoggerWithTraceId<TLog = ILogWithTraceId> extends ILogger<TLog> {
   traceId: string;
 }
 
-export interface ILoggerWithTraceIdAndCorrelationId {
-  debug: ILogWithTraceIdAndCorrelationId;
-  warn: ILogWithTraceIdAndCorrelationId;
-  info: ILogWithTraceIdAndCorrelationId;
-  error: ILogWithTraceIdAndCorrelationId;
-  security: ILogWithTraceIdAndCorrelationId;
-  traceId: string;
+export interface ILoggerWithTraceIdAndCorrelationId extends ILoggerWithTraceId<ILogWithTraceIdAndCorrelationId> {
   correlationId: string;
 }
 
-export interface ILoggerWithTraceIdAndCorrelationIdAndOperationName {
-  debug: ILogWithTraceIdAndCorrelationIdAndOperationName;
-  warn: ILogWithTraceIdAndCorrelationIdAndOperationName;
-  info: ILogWithTraceIdAndCorrelationIdAndOperationName;
-  error: ILogWithTraceIdAndCorrelationIdAndOperationName;
-  security: ILogWithTraceIdAndCorrelationIdAndOperationName;
-  traceId: string;
-  operationName: string;
+export interface ILoggerWithTraceIdAndCorrelationIdAndOperationName extends ILoggerWithTraceIdAndOperationName<ILogWithTraceIdAndCorrelationIdAndOperationName> {
   correlationId: string;
 }
 
-export interface ILoggerWithTraceIdAndOperationName {
-  debug: ILogWithTraceIdAndOperationName;
-  warn: ILogWithTraceIdAndOperationName;
-  info: ILogWithTraceIdAndOperationName;
-  error: ILogWithTraceIdAndOperationName;
-  security: ILogWithTraceIdAndOperationName;
-  traceId: string;
+export interface ILoggerWithTraceIdAndOperationName<TLog = ILogWithTraceIdAndOperationName> extends ILoggerWithTraceId<TLog> {
   operationName: string;
 }
 

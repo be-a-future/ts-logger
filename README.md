@@ -29,7 +29,11 @@ logger.info(generateTraceId(), 'request-123', 'Order created', 'createOrder', {
 
 The five arguments to a log method are `traceId`, `correlationId`, `eventName`, `operationName`, and `data`. The available methods are `debug`, `info`, `warn`, `error`, and `security`. Pass a string or an object for `data`; object values that are strings or numbers appear as `<key>:value` pairs in the log message.
 
-Each message is a pipe-delimited line containing the timestamp, information system, environment, version, trace ID, correlation ID, service name, level, event name, operation name, and any data. If an ID is omitted, the output uses an all-zero UUID placeholder.
+Each message is a pipe-delimited line containing the timestamp, information system, environment, version, trace ID, correlation ID, service name, level, event name, operation name, and any data. Missing or empty trace and correlation IDs use `0`. Pass `undefined` in either ID position when calling a log method directly:
+
+```ts
+logger.info(undefined, undefined, 'Order created', 'createOrder', { orderId: '123' });
+```
 
 ## Reuse request context
 
@@ -56,7 +60,42 @@ orderLogger.info('Order created', { orderId: '123' });
 orderLogger.security('Order access checked', { userId: '456' });
 ```
 
-`applyTraceId` binds only the trace ID. These helpers also support curried calls, such as `applyTraceId(traceId)(logger)`.
+You can also bind the context in separate steps, with or without a correlation ID:
+
+```ts
+import { applyCorrelationId, applyOperationName, applyTraceId } from '@bafx/logger';
+
+const traceLogger = applyTraceId('trace-123', serviceLogger);
+const operationLogger = applyOperationName('createOrder', traceLogger);
+operationLogger.info('Order created');
+operationLogger.info('Order created', { orderId: '123' });
+
+const correlatedLogger = applyCorrelationId('request-123', traceLogger);
+const correlatedOperationLogger = applyOperationName('createOrder', correlatedLogger);
+correlatedOperationLogger.info('Order created');
+```
+
+You can bind only the operation name directly to a plain logger:
+
+```ts
+const operationOnlyLogger = applyOperationName('createOrder', serviceLogger);
+operationOnlyLogger.info('Order created');
+operationOnlyLogger.info('Order created', { orderId: '123' });
+```
+
+The curried form `applyOperationName('createOrder')(serviceLogger)` works too. Operation loggers accept an event name and optional data. To include a correlation ID, bind it with `applyCorrelationId` before applying the operation name, as shown above.
+
+ID-binding helpers require strings. `applyTraceIdAndCorrelationId` requires both IDs in its direct and curried forms; use `'0'` for an explicit placeholder. Direct log calls still accept `undefined` IDs.
+
+Log methods support partial application of the trace ID or both IDs:
+
+```ts
+serviceLogger.info('trace-123')('request-123', 'Order created', 'createOrder', { orderId: '123' });
+serviceLogger.info('trace-123', 'request-123')('Order created', 'createOrder', { orderId: '123' });
+```
+
+Use `applyOperationName` to bind an operation name. Passing two arguments to a log method always binds IDs; it does not bind an operation name.
+
 
 ## Configuration
 

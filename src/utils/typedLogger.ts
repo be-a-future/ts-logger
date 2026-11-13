@@ -5,7 +5,6 @@ import {
   ILoggerWithTraceId,
   ILoggerWithTraceIdAndCorrelationIdAndOperationName,
   ILoggerWithTraceIdAndOperationName,
-  ILogFinal,
   LogLevel,
   ILoggerWithTraceIdAndCorrelationId,
 } from '../interfaces';
@@ -22,10 +21,12 @@ export type BaseTypedLogger<
   THasCorrelationId extends boolean = false,
 > = {
   [Level in LogLevel]: <T extends TEventKeys>(
-    ...args: THasCorrelationId extends true
-      ? [eventName: TEventNames[T], ...rest: TNeedsOperationName extends true ? [operationName: string, data: TLogData] : [data: TLogData]]
-      : [correlationId: string | undefined, eventName: TEventNames[T], ...rest: TNeedsOperationName extends true ? [operationName: string, data: TLogData] : [data: TLogData]]
-  ) => ILogFinal;
+    ...args: TNeedsOperationName extends false
+      ? [eventName: TEventNames[T], data: TLogData]
+      : THasCorrelationId extends true
+        ? [eventName: TEventNames[T], operationName: string, data: TLogData]
+        : [correlationId: string | undefined, eventName: TEventNames[T], operationName: string, data: TLogData]
+  ) => void;
 };
 
 export type TypedLoggerWithTraceIdAndOperation<TEventKeys extends string, TEventNames extends EventNames<TEventKeys>, TLogData extends IBaseLoggerData> = BaseTypedLogger<
@@ -87,8 +88,8 @@ export function createTypedLoggerWithTraceIdAndOperation<TEventKeys extends stri
   } as TypedLoggerWithTraceIdAndOperation<TEventKeys, TEventNames, TLogData>;
 
   (['debug', 'warn', 'info', 'error', 'security'] as const).forEach((level) => {
-    typedLogger[level] = (correlationId: Optional<string>, eventName: string, data: Optional<object | string>) => {
-      return 'correlationId' in logger ? logger[level](eventName, data) : logger[level](correlationId, eventName, data);
+    typedLogger[level] = (eventName, data) => {
+      return logger[level](eventName, data);
     };
   });
 

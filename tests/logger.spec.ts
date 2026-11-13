@@ -4,7 +4,7 @@ import dgram from 'dgram';
 import { compose } from '@bafx/utils';
 import * as fs from 'fs';
 import { EOL } from 'os';
-import { applyOperationName, applyTraceId, applyTraceIdAndCorrelationId, defaultUUID, generateTraceId, getLogger, IBaseLoggerData } from '../src';
+import { applyCorrelationId, applyOperationName, applyTraceId, applyTraceIdAndCorrelationId, generateTraceId, getLogger, IBaseLoggerData } from '../src';
 import {
   createBasicTypedLogger,
   createTypedLoggerWithIdsAndOperationName,
@@ -12,7 +12,7 @@ import {
   createTypedLoggerWithTraceIdAndCorrelationId,
   createTypedLoggerWithTraceIdAndOperation,
   applyOperationNameToTypedLogger,
-} from '../src/utils/typedLogger';
+} from '../src';
 
 const padTo2Digits = (num: number) => num.toString().padStart(2, '0');
 const today = (): string => {
@@ -80,12 +80,30 @@ describe('logger', () => {
     expect(rest).toEqual([serviceName, environment, defaultVersion, traceId, correlationId, serviceName, 'info', eventName, operationName, `<key1>:value1;<key2>:value2${EOL}`]);
   });
 
-  it('logs with default traceId', async () => {
-    logger().info(undefined, correlationId, eventName, operationName, basicMetaData);
+  it.each([undefined, ''])('logs trace ID 0 when the supplied ID is %p', async (missingTraceId) => {
+    logger().info(missingTraceId, correlationId, eventName, operationName, basicMetaData);
 
     const [timestamp, ...rest] = await readLog();
     expect(timestamp).toEqual(expect.stringContaining(today()));
-    expect(rest).toEqual([serviceName, environment, defaultVersion, defaultUUID(), correlationId, serviceName, 'info', eventName, operationName, `<key>:value${EOL}`]);
+    expect(rest).toEqual([serviceName, environment, defaultVersion, '0', correlationId, serviceName, 'info', eventName, operationName, `<key>:value${EOL}`]);
+  });
+
+  it.each([undefined, ''])('logs correlation ID 0 when the supplied ID is %p', async (missingCorrelationId) => {
+    logger().info(undefined, missingCorrelationId, eventName, operationName, basicMetaData);
+
+    const [_, ...rest] = await readLog();
+    expect(rest).toEqual([serviceName, environment, defaultVersion, '0', '0', serviceName, 'info', eventName, operationName, `<key>:value${EOL}`]);
+  });
+
+  it('logs correlation ID 0 when the combined helper binds an explicit placeholder', async () => {
+    const requestLogger = applyTraceIdAndCorrelationId(traceId, '0', logger());
+    const operationLogger = applyOperationName(operationName, requestLogger);
+
+    expect(operationLogger.correlationId).toBe('0');
+    operationLogger.info(eventName, basicMetaData);
+
+    const [_, ...rest] = await readLog();
+    expect(rest).toEqual([serviceName, environment, defaultVersion, traceId, '0', serviceName, 'info', eventName, operationName, `<key>:value${EOL}`]);
   });
 
   it('should not log debug when log level is info', async () => {
@@ -138,14 +156,43 @@ describe('logger', () => {
     ]);
   });
 
-  it('logs with composed traceId and operationName', async () => {
+  it('logs with composed traceId, correlationId and operationName', async () => {
     const metaData = { key: 'value' };
 
-    compose(applyOperationName(operationName), applyTraceId(traceId))(logger()).info(correlationId, eventName, metaData);
+    compose(applyOperationName(operationName), applyCorrelationId(correlationId), applyTraceId(traceId))(logger()).info(eventName, metaData);
 
     const [timestamp, ...rest] = await readLog();
     expect(timestamp).toEqual(expect.stringContaining(today()));
     expect(rest).toEqual([serviceName, environment, defaultVersion, traceId, correlationId, serviceName, 'info', eventName, operationName, `<key>:value${EOL}`]);
+  });
+
+  it('logs a message with only operationName bound to a plain logger', async () => {
+    const operationLogger = applyOperationName(operationName, logger());
+
+    operationLogger.info(eventName);
+
+    const [_, ...rest] = await readLog();
+    expect(rest).toEqual([serviceName, environment, defaultVersion, '0', '0', serviceName, 'info', eventName, `${operationName}${EOL}`]);
+  });
+
+  it('logs a message with only traceId and operationName bound', async () => {
+    const operationLogger = applyOperationName(operationName, applyTraceId(traceId, logger()));
+
+    operationLogger.info(eventName);
+
+    const [_, ...rest] = await readLog();
+    expect(rest).toEqual([serviceName, environment, defaultVersion, traceId, '0', serviceName, 'info', eventName, `${operationName}${EOL}`]);
+  });
+
+  it('logs a message with traceId, correlationId and operationName bound separately', async () => {
+    const traceLogger = applyTraceId(traceId, logger());
+    const correlatedLogger = applyCorrelationId(correlationId, traceLogger);
+    const operationLogger = applyOperationName(operationName, correlatedLogger);
+
+    operationLogger.info(eventName);
+
+    const [_, ...rest] = await readLog();
+    expect(rest).toEqual([serviceName, environment, defaultVersion, traceId, correlationId, serviceName, 'info', eventName, `${operationName}${EOL}`]);
   });
 
   it('logs object with string interpolation', async () => {
@@ -168,7 +215,7 @@ describe('logger', () => {
     expect(timestamp).toEqual(expect.stringContaining(today()));
     expect(rest).toEqual([serviceName, environment, defaultVersion, generatedTraceId, correlationId, serviceName, 'info', eventName, operationName, `<id>:15${EOL}`]);
     expect(generatedTraceId).toBeTruthy();
-    expect(generatedTraceId).not.toEqual(defaultUUID());
+    expect(generatedTraceId).not.toEqual('0');
   });
 
   it('does not create file when logging to file is NOT configured.', () => {
@@ -328,7 +375,7 @@ describe('logger', () => {
     securityWithTrace(correlationId, eventName, operationName, metaData);
 
     const [_, ...rest] = await readLog();
-    expect(rest[3]).toEqual(defaultUUID());
+    expect(rest[3]).toEqual('0');
   });
 
   it('logs security message with generated traceId', async () => {
@@ -341,7 +388,7 @@ describe('logger', () => {
 
     const [_, ...rest] = await readLog();
     expect(rest[3]).toBeTruthy();
-    expect(rest[3]).not.toEqual(defaultUUID());
+    expect(rest[3]).not.toEqual('0');
   });
 
   describe('typed logger', () => {
@@ -367,13 +414,13 @@ describe('logger', () => {
 
     const EXPECTED_LOG_DATA_STRING = `<action>:test;<userName>:test;<result>:test;<dashboardId>:test;<userId>:test${EOL}`;
 
-    const verifyLogOutput = (rest: string[]) => {
+    const verifyLogOutput = (rest: string[], expectedCorrelationId = correlationId) => {
       expect(rest).toEqual([
         serviceName,
         environment,
         defaultVersion,
         traceId,
-        correlationId,
+        expectedCorrelationId,
         serviceName,
         'info',
         EVENT_NAMES.CARD_DELETE,
@@ -406,10 +453,10 @@ describe('logger', () => {
 
       const typedLoggerWithTraceIdAndOperationName = createTypedLoggerWithTraceIdAndOperation<EventKeys, typeof EVENT_NAMES, AppLoggerData>(loggerWithTraceIdAndOperationName);
 
-      typedLoggerWithTraceIdAndOperationName.info(correlationId, EVENT_NAMES.CARD_DELETE, TEST_LOG_DATA);
+      typedLoggerWithTraceIdAndOperationName.info(EVENT_NAMES.CARD_DELETE, TEST_LOG_DATA);
 
       const [_, ...rest] = await readLog();
-      verifyLogOutput(rest);
+      verifyLogOutput(rest, '0');
     });
 
     it('creates a typed logger with traceId, correlationId', async () => {
