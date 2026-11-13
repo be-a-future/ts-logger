@@ -56,7 +56,23 @@ orderLogger.info('Order created', { orderId: '123' });
 orderLogger.security('Order access checked', { userId: '456' });
 ```
 
-`applyTraceId` binds only the trace ID. These helpers also support curried calls, such as `applyTraceId(traceId)(logger)`.
+You can also bind the context in separate steps, with or without a correlation ID:
+
+```ts
+import { applyCorrelationId, applyOperationName, applyTraceId } from '@bafx/logger';
+
+const traceLogger = applyTraceId('trace-123', serviceLogger);
+const operationLogger = applyOperationName('createOrder', traceLogger);
+operationLogger.info('Order created');
+operationLogger.info('Order created', { orderId: '123' });
+
+const correlatedLogger = applyCorrelationId('request-123', traceLogger);
+const correlatedOperationLogger = applyOperationName('createOrder', correlatedLogger);
+correlatedOperationLogger.info('Order created');
+```
+
+Operation loggers accept an event name and optional data. To include a correlation ID, bind it with `applyCorrelationId` before applying the operation name, as shown above.
+
 
 ## Configuration
 
