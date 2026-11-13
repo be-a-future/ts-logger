@@ -42,7 +42,7 @@ export const applyCorrelationId: ApplyCorrelationId = curry((correlationId: stri
   error: (eventName, operationName, data) => logger.error(correlationId, eventName, operationName, data),
   security: (eventName, operationName, data) => logger.security(correlationId, eventName, operationName, data),
   traceId: logger.traceId,
-  correlationId: correlationId,
+  correlationId: correlationId || '0',
 }));
 
 type ApplyTraceIdAndCorrelationId = {
@@ -58,7 +58,7 @@ export const applyTraceIdAndCorrelationId: ApplyTraceIdAndCorrelationId = curry(
     error: logger.error(traceId, correlationId),
     security: logger.security(traceId, correlationId),
     traceId: traceId || defaultUUID(),
-    correlationId: correlationId || defaultUUID(),
+    correlationId: correlationId || '0',
   }),
 );
 

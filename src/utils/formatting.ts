@@ -27,9 +27,7 @@ export const formatLogData = (data: Record<string, string | number> | string): s
     }
 
     const formattedPair = `<${key}>:${withoutNewLines(value)}`;
-    const newAccumulator = [accumulator, formattedPair].filter(isNonEmptyString).join(';');
-
-    return newAccumulator;
+    return  [accumulator, formattedPair].filter(isNonEmptyString).join(';');
   }, '');
 };
 
@@ -40,7 +38,7 @@ export const formatLogMessage = (props: ExtendedTransformableInfo): string => {
     props.environment,
     props.version ?? '0',
     props.traceId || defaultUUID(),
-    props.correlationId || defaultUUID(),
+    props.correlationId || '0',
     props.service,
     props.level,
     props.eventName,

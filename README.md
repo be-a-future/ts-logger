@@ -29,7 +29,7 @@ logger.info(generateTraceId(), 'request-123', 'Order created', 'createOrder', {
 
 The five arguments to a log method are `traceId`, `correlationId`, `eventName`, `operationName`, and `data`. The available methods are `debug`, `info`, `warn`, `error`, and `security`. Pass a string or an object for `data`; object values that are strings or numbers appear as `<key>:value` pairs in the log message.
 
-Each message is a pipe-delimited line containing the timestamp, information system, environment, version, trace ID, correlation ID, service name, level, event name, operation name, and any data. If an ID is omitted, the output uses an all-zero UUID placeholder.
+Each message is a pipe-delimited line containing the timestamp, information system, environment, version, trace ID, correlation ID, service name, level, event name, operation name, and any data. A missing trace ID uses an all-zero UUID placeholder; a missing correlation ID uses `0`.
 
 ## Reuse request context
 

@@ -1,4 +1,4 @@
-import { applyCorrelationId, applyOperationName, applyTraceId, applyTraceIdAndCorrelationId, createTypedLoggerWithTraceIdAndOperation, defaultUUID, loggerMocked } from '../src';
+import { applyCorrelationId, applyOperationName, applyTraceId, applyTraceIdAndCorrelationId, createTypedLoggerWithTraceIdAndOperation, loggerMocked } from '../src';
 
 describe.each(['debug', 'info', 'warn', 'error', 'security'] as const)('%s context logger', (level) => {
   const traceId = 'trace-id';
@@ -78,7 +78,7 @@ describe.each(['debug', 'info', 'warn', 'error', 'security'] as const)('%s conte
   it('uses the default correlation ID when undefined is bound through the combined helper', () => {
     const logger = applyTraceIdAndCorrelationId(traceId, undefined, loggerMocked);
 
-    expect(logger.correlationId).toBe(defaultUUID());
+    expect(logger.correlationId).toBe('0');
     applyOperationName(operationName, logger)[level](eventName);
 
     expect(output).toHaveBeenCalledWith({ level, traceId, correlationId: undefined, eventName, operationName, data: undefined });

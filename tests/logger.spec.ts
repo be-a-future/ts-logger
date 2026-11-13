@@ -12,7 +12,7 @@ import {
   createTypedLoggerWithTraceIdAndCorrelationId,
   createTypedLoggerWithTraceIdAndOperation,
   applyOperationNameToTypedLogger,
-} from '../src/utils/typedLogger';
+} from '../src';
 
 const padTo2Digits = (num: number) => num.toString().padStart(2, '0');
 const today = (): string => {
@@ -88,6 +88,24 @@ describe('logger', () => {
     expect(rest).toEqual([serviceName, environment, defaultVersion, defaultUUID(), correlationId, serviceName, 'info', eventName, operationName, `<key>:value${EOL}`]);
   });
 
+  it.each([undefined, ''])('logs correlation ID 0 when the supplied ID is %p', async (missingCorrelationId) => {
+    logger().info(undefined, missingCorrelationId, eventName, operationName, basicMetaData);
+
+    const [_, ...rest] = await readLog();
+    expect(rest).toEqual([serviceName, environment, defaultVersion, defaultUUID(), '0', serviceName, 'info', eventName, operationName, `<key>:value${EOL}`]);
+  });
+
+  it('logs correlation ID 0 when the combined helper binds a missing ID', async () => {
+    const requestLogger = applyTraceIdAndCorrelationId(traceId, undefined, logger());
+    const operationLogger = applyOperationName(operationName, requestLogger);
+
+    expect(operationLogger.correlationId).toBe('0');
+    operationLogger.info(eventName, basicMetaData);
+
+    const [_, ...rest] = await readLog();
+    expect(rest).toEqual([serviceName, environment, defaultVersion, traceId, '0', serviceName, 'info', eventName, operationName, `<key>:value${EOL}`]);
+  });
+
   it('should not log debug when log level is info', async () => {
     logger().debug(undefined, correlationId, eventName, operationName, basicMetaData);
 
@@ -154,7 +172,7 @@ describe('logger', () => {
     operationLogger.info(eventName);
 
     const [_, ...rest] = await readLog();
-    expect(rest).toEqual([serviceName, environment, defaultVersion, traceId, defaultUUID(), serviceName, 'info', eventName, `${operationName}${EOL}`]);
+    expect(rest).toEqual([serviceName, environment, defaultVersion, traceId, '0', serviceName, 'info', eventName, `${operationName}${EOL}`]);
   });
 
   it('logs a message with traceId, correlationId and operationName bound separately', async () => {
@@ -429,7 +447,7 @@ describe('logger', () => {
       typedLoggerWithTraceIdAndOperationName.info(EVENT_NAMES.CARD_DELETE, TEST_LOG_DATA);
 
       const [_, ...rest] = await readLog();
-      verifyLogOutput(rest, defaultUUID());
+      verifyLogOutput(rest, '0');
     });
 
     it('creates a typed logger with traceId, correlationId', async () => {
