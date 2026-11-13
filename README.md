@@ -29,7 +29,11 @@ logger.info(generateTraceId(), 'request-123', 'Order created', 'createOrder', {
 
 The five arguments to a log method are `traceId`, `correlationId`, `eventName`, `operationName`, and `data`. The available methods are `debug`, `info`, `warn`, `error`, and `security`. Pass a string or an object for `data`; object values that are strings or numbers appear as `<key>:value` pairs in the log message.
 
-Each message is a pipe-delimited line containing the timestamp, information system, environment, version, trace ID, correlation ID, service name, level, event name, operation name, and any data. A missing trace ID uses an all-zero UUID placeholder; a missing correlation ID uses `0`.
+Each message is a pipe-delimited line containing the timestamp, information system, environment, version, trace ID, correlation ID, service name, level, event name, operation name, and any data. Missing or empty trace and correlation IDs use `0`. Pass `undefined` in either ID position when calling a log method directly:
+
+```ts
+logger.info(undefined, undefined, 'Order created', 'createOrder', { orderId: '123' });
+```
 
 ## Reuse request context
 
@@ -71,7 +75,15 @@ const correlatedOperationLogger = applyOperationName('createOrder', correlatedLo
 correlatedOperationLogger.info('Order created');
 ```
 
-Operation loggers accept an event name and optional data. To include a correlation ID, bind it with `applyCorrelationId` before applying the operation name, as shown above.
+You can bind only the operation name directly to a plain logger:
+
+```ts
+const operationOnlyLogger = applyOperationName('createOrder', serviceLogger);
+operationOnlyLogger.info('Order created');
+operationOnlyLogger.info('Order created', { orderId: '123' });
+```
+
+The curried form `applyOperationName('createOrder')(serviceLogger)` works too. Operation loggers accept an event name and optional data. To include a correlation ID, bind it with `applyCorrelationId` before applying the operation name, as shown above.
 
 
 ## Configuration

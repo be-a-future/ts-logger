@@ -4,11 +4,6 @@ interface ExtendedTransformableInfo extends TransformableInfo {
   data?: string | Record<string, string | number>;
 }
 
-// UUID and string utilities
-const printZeroes = (count: number): string => '0'.repeat(count);
-export const defaultUUID = () => [printZeroes(8), printZeroes(4), printZeroes(4), printZeroes(4), printZeroes(12)].join('-');
-export const toString = (obj: object | string | null | undefined) => (typeof obj === 'string' ? obj : JSON.stringify(obj));
-
 // Formatting utilities
 export const isStringOrNumber = <T>(value: T) => ['string', 'number'].includes(typeof value);
 export const withoutNewLines = (value: string | number) => value.toString().replace(/\n/g, '');
@@ -27,7 +22,7 @@ export const formatLogData = (data: Record<string, string | number> | string): s
     }
 
     const formattedPair = `<${key}>:${withoutNewLines(value)}`;
-    return  [accumulator, formattedPair].filter(isNonEmptyString).join(';');
+    return [accumulator, formattedPair].filter(isNonEmptyString).join(';');
   }, '');
 };
 
@@ -37,7 +32,7 @@ export const formatLogMessage = (props: ExtendedTransformableInfo): string => {
     props.informationSystem,
     props.environment,
     props.version ?? '0',
-    props.traceId || defaultUUID(),
+    props.traceId || '0',
     props.correlationId || '0',
     props.service,
     props.level,

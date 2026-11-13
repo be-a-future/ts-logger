@@ -4,7 +4,7 @@ import dgram from 'dgram';
 import { compose } from '@bafx/utils';
 import * as fs from 'fs';
 import { EOL } from 'os';
-import { applyCorrelationId, applyOperationName, applyTraceId, applyTraceIdAndCorrelationId, defaultUUID, generateTraceId, getLogger, IBaseLoggerData } from '../src';
+import { applyCorrelationId, applyOperationName, applyTraceId, applyTraceIdAndCorrelationId, generateTraceId, getLogger, IBaseLoggerData } from '../src';
 import {
   createBasicTypedLogger,
   createTypedLoggerWithIdsAndOperationName,
@@ -80,19 +80,19 @@ describe('logger', () => {
     expect(rest).toEqual([serviceName, environment, defaultVersion, traceId, correlationId, serviceName, 'info', eventName, operationName, `<key1>:value1;<key2>:value2${EOL}`]);
   });
 
-  it('logs with default traceId', async () => {
-    logger().info(undefined, correlationId, eventName, operationName, basicMetaData);
+  it.each([undefined, ''])('logs trace ID 0 when the supplied ID is %p', async (missingTraceId) => {
+    logger().info(missingTraceId, correlationId, eventName, operationName, basicMetaData);
 
     const [timestamp, ...rest] = await readLog();
     expect(timestamp).toEqual(expect.stringContaining(today()));
-    expect(rest).toEqual([serviceName, environment, defaultVersion, defaultUUID(), correlationId, serviceName, 'info', eventName, operationName, `<key>:value${EOL}`]);
+    expect(rest).toEqual([serviceName, environment, defaultVersion, '0', correlationId, serviceName, 'info', eventName, operationName, `<key>:value${EOL}`]);
   });
 
   it.each([undefined, ''])('logs correlation ID 0 when the supplied ID is %p', async (missingCorrelationId) => {
     logger().info(undefined, missingCorrelationId, eventName, operationName, basicMetaData);
 
     const [_, ...rest] = await readLog();
-    expect(rest).toEqual([serviceName, environment, defaultVersion, defaultUUID(), '0', serviceName, 'info', eventName, operationName, `<key>:value${EOL}`]);
+    expect(rest).toEqual([serviceName, environment, defaultVersion, '0', '0', serviceName, 'info', eventName, operationName, `<key>:value${EOL}`]);
   });
 
   it('logs correlation ID 0 when the combined helper binds a missing ID', async () => {
@@ -166,6 +166,15 @@ describe('logger', () => {
     expect(rest).toEqual([serviceName, environment, defaultVersion, traceId, correlationId, serviceName, 'info', eventName, operationName, `<key>:value${EOL}`]);
   });
 
+  it('logs a message with only operationName bound to a plain logger', async () => {
+    const operationLogger = applyOperationName(operationName, logger());
+
+    operationLogger.info(eventName);
+
+    const [_, ...rest] = await readLog();
+    expect(rest).toEqual([serviceName, environment, defaultVersion, '0', '0', serviceName, 'info', eventName, `${operationName}${EOL}`]);
+  });
+
   it('logs a message with only traceId and operationName bound', async () => {
     const operationLogger = applyOperationName(operationName, applyTraceId(traceId, logger()));
 
@@ -206,7 +215,7 @@ describe('logger', () => {
     expect(timestamp).toEqual(expect.stringContaining(today()));
     expect(rest).toEqual([serviceName, environment, defaultVersion, generatedTraceId, correlationId, serviceName, 'info', eventName, operationName, `<id>:15${EOL}`]);
     expect(generatedTraceId).toBeTruthy();
-    expect(generatedTraceId).not.toEqual(defaultUUID());
+    expect(generatedTraceId).not.toEqual('0');
   });
 
   it('does not create file when logging to file is NOT configured.', () => {
@@ -366,7 +375,7 @@ describe('logger', () => {
     securityWithTrace(correlationId, eventName, operationName, metaData);
 
     const [_, ...rest] = await readLog();
-    expect(rest[3]).toEqual(defaultUUID());
+    expect(rest[3]).toEqual('0');
   });
 
   it('logs security message with generated traceId', async () => {
@@ -379,7 +388,7 @@ describe('logger', () => {
 
     const [_, ...rest] = await readLog();
     expect(rest[3]).toBeTruthy();
-    expect(rest[3]).not.toEqual(defaultUUID());
+    expect(rest[3]).not.toEqual('0');
   });
 
   describe('typed logger', () => {

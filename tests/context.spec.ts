@@ -15,6 +15,35 @@ describe.each(['debug', 'info', 'warn', 'error', 'security'] as const)('%s conte
     output.mockRestore();
   });
 
+  it.each([undefined, 'order-123', { orderId: '123' }])('binds only an operation to a plain logger with data %p', (data) => {
+    const logger = applyOperationName(operationName, loggerMocked);
+
+    expect(logger).toMatchObject({ traceId: '0', operationName });
+    expect(loggerMocked).not.toHaveProperty('operationName');
+    expect(loggerMocked).not.toHaveProperty('traceId');
+
+    if (data === undefined) {
+      logger[level](eventName);
+    } else {
+      logger[level](eventName, data);
+    }
+
+    expect(output).toHaveBeenCalledTimes(1);
+    expect(output).toHaveBeenCalledWith({ level, traceId: undefined, correlationId: undefined, eventName, operationName, data });
+  });
+
+  it('supports curried operation binding on a plain logger with independent contexts', () => {
+    const first = applyOperationName(operationName)(loggerMocked);
+    const second = applyOperationName('another-operation')(loggerMocked);
+
+    first[level](eventName);
+    second[level](eventName);
+
+    expect(output).toHaveBeenCalledTimes(2);
+    expect(output).toHaveBeenNthCalledWith(1, { level, traceId: undefined, correlationId: undefined, eventName, operationName, data: undefined });
+    expect(output).toHaveBeenNthCalledWith(2, { level, traceId: undefined, correlationId: undefined, eventName, operationName: 'another-operation', data: undefined });
+  });
+
   it.each([undefined, 'order-123', { orderId: '123' }])('logs with trace and operation context and data %p', (data) => {
     const logger = applyOperationName(operationName, applyTraceId(traceId, loggerMocked));
 
@@ -75,12 +104,22 @@ describe.each(['debug', 'info', 'warn', 'error', 'security'] as const)('%s conte
     expect(output).toHaveBeenCalledWith({ level, traceId, correlationId: withCorrelationId ? correlationId : undefined, eventName, operationName, data });
   });
 
-  it('uses the default correlation ID when undefined is bound through the combined helper', () => {
-    const logger = applyTraceIdAndCorrelationId(traceId, undefined, loggerMocked);
+  it('uses trace ID 0 when undefined is bound', () => {
+    const logger = applyOperationName(operationName, applyTraceId(undefined, loggerMocked));
 
+    expect(logger.traceId).toBe('0');
+    logger[level](eventName);
+
+    expect(output).toHaveBeenCalledWith({ level, traceId: undefined, correlationId: undefined, eventName, operationName, data: undefined });
+  });
+
+  it('uses 0 for both missing IDs through the combined helper', () => {
+    const logger = applyTraceIdAndCorrelationId(undefined, undefined, loggerMocked);
+
+    expect(logger.traceId).toBe('0');
     expect(logger.correlationId).toBe('0');
     applyOperationName(operationName, logger)[level](eventName);
 
-    expect(output).toHaveBeenCalledWith({ level, traceId, correlationId: undefined, eventName, operationName, data: undefined });
+    expect(output).toHaveBeenCalledWith({ level, traceId: undefined, correlationId: undefined, eventName, operationName, data: undefined });
   });
 });

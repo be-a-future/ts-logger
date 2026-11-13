@@ -6,10 +6,8 @@ import {
   ILoggerWithTraceIdAndCorrelationId,
   ILoggerWithTraceIdAndCorrelationIdAndOperationName,
   ILoggerWithTraceIdAndOperationName,
-  ILogWithTraceIdAndOperationName,
   LogLevel,
 } from '../interfaces';
-import { defaultUUID } from './formatting';
 
 /**
  * Generates new traceId
@@ -27,7 +25,7 @@ export const applyTraceId: ApplyTraceId = curry((traceId: string | undefined, lo
   warn: logger.warn(traceId),
   error: logger.error(traceId),
   security: logger.security(traceId),
-  traceId: traceId || defaultUUID(),
+  traceId: traceId || '0',
 }));
 
 type ApplyCorrelationId = {
@@ -57,7 +55,7 @@ export const applyTraceIdAndCorrelationId: ApplyTraceIdAndCorrelationId = curry(
     warn: logger.warn(traceId, correlationId),
     error: logger.error(traceId, correlationId),
     security: logger.security(traceId, correlationId),
-    traceId: traceId || defaultUUID(),
+    traceId: traceId || '0',
     correlationId: correlationId || '0',
   }),
 );
@@ -66,47 +64,50 @@ type ApplyOperationName = {
   (operationName: string): {
     (logger: ILoggerWithTraceIdAndCorrelationId): ILoggerWithTraceIdAndCorrelationIdAndOperationName;
     (logger: ILoggerWithTraceId): ILoggerWithTraceIdAndOperationName;
+    (logger: ILogger): ILoggerWithTraceIdAndOperationName;
   };
   (operationName: string, logger: ILoggerWithTraceIdAndCorrelationId): ILoggerWithTraceIdAndCorrelationIdAndOperationName;
   (operationName: string, logger: ILoggerWithTraceId): ILoggerWithTraceIdAndOperationName;
+  (operationName: string, logger: ILogger): ILoggerWithTraceIdAndOperationName;
 };
 
-const getLogFunction = (logger: ILoggerWithTraceIdAndCorrelationId, operationName: string) => (level: LogLevel) => (eventName: string, data: Optional<object | string>) =>
+const bindOperationName = (logger: ILoggerWithTraceIdAndCorrelationId, operationName: string) => (level: LogLevel) => (eventName: string, data: Optional<object | string>) =>
   logger[level](eventName, operationName, data);
-const getLogWithOperation =
-  (logger: ILoggerWithTraceId, operationName: string, correlationId: undefined) =>
-  (level: LogLevel): ILogWithTraceIdAndOperationName =>
-  (eventName: string, data: Optional<object | string>) =>
-    logger[level](correlationId, eventName, operationName, data);
 
-const hasCorrelationId = (logger: ILoggerWithTraceId | ILoggerWithTraceIdAndCorrelationId): logger is ILoggerWithTraceIdAndCorrelationId => 'correlationId' in logger;
+const hasProperty =
+  <T extends object>(property: keyof T) =>
+  (value: object): value is T =>
+    property in value;
 
-export const applyOperationName: ApplyOperationName = curry((operationName: string, logger: ILoggerWithTraceId | ILoggerWithTraceIdAndCorrelationId) => {
+const hasCorrelationId = hasProperty('correlationId');
+const hasTraceId = hasProperty('traceId');
+
+const ensureLoggerIds = (logger: ILogger | ILoggerWithTraceId | ILoggerWithTraceIdAndCorrelationId): ILoggerWithTraceIdAndCorrelationId => {
   if (hasCorrelationId(logger)) {
-    const logFunction = getLogFunction(logger, operationName);
-    return {
-      debug: logFunction('debug'),
-      info: logFunction('info'),
-      warn: logFunction('warn'),
-      error: logFunction('error'),
-      security: logFunction('security'),
-      traceId: logger.traceId,
-      correlationId: logger.correlationId,
-      operationName,
-    } as ILoggerWithTraceIdAndCorrelationIdAndOperationName;
+    return logger;
   }
+  if (hasTraceId(logger)) {
+    return applyCorrelationId('0', logger);
+  }
+  return applyTraceIdAndCorrelationId('0', '0', logger);
+};
 
-  const logWithOperation = getLogWithOperation(logger, operationName, undefined);
-  return {
-    debug: logWithOperation('debug'),
-    info: logWithOperation('info'),
-    warn: logWithOperation('warn'),
-    error: logWithOperation('error'),
-    security: logWithOperation('security'),
-    traceId: logger.traceId,
-    operationName,
-  } as ILoggerWithTraceIdAndOperationName;
-});
+export const applyOperationName: ApplyOperationName = curry(
+  (operationName: string, logger: ILogger | ILoggerWithTraceId | ILoggerWithTraceIdAndCorrelationId): ILoggerWithTraceIdAndCorrelationIdAndOperationName => {
+    const loggerWithIds = ensureLoggerIds(logger);
+    const createLogMethod = bindOperationName(loggerWithIds, operationName);
+    return {
+      debug: createLogMethod('debug'),
+      info: createLogMethod('info'),
+      warn: createLogMethod('warn'),
+      error: createLogMethod('error'),
+      security: createLogMethod('security'),
+      traceId: loggerWithIds.traceId,
+      correlationId: loggerWithIds.correlationId,
+      operationName,
+    };
+  },
+);
 
 const bool = <T>(a: T) => !!a;
 
