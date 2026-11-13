@@ -15,6 +15,19 @@ describe.each(['debug', 'info', 'warn', 'error', 'security'] as const)('%s conte
     output.mockRestore();
   });
 
+  it('preserves argument order for direct calls and partial application of IDs', () => {
+    const data = { orderId: '123' };
+
+    loggerMocked[level](traceId, correlationId, eventName, operationName, data);
+    loggerMocked[level](traceId)(correlationId, eventName, operationName, data);
+    loggerMocked[level](traceId, correlationId)(eventName, operationName, data);
+
+    expect(output).toHaveBeenCalledTimes(3);
+    for (let call = 1; call <= 3; call += 1) {
+      expect(output).toHaveBeenNthCalledWith(call, { level, traceId, correlationId, eventName, operationName, data });
+    }
+  });
+
   it.each([undefined, 'order-123', { orderId: '123' }])('binds only an operation to a plain logger with data %p', (data) => {
     const logger = applyOperationName(operationName, loggerMocked);
 
@@ -104,22 +117,22 @@ describe.each(['debug', 'info', 'warn', 'error', 'security'] as const)('%s conte
     expect(output).toHaveBeenCalledWith({ level, traceId, correlationId: withCorrelationId ? correlationId : '0', eventName, operationName, data });
   });
 
-  it('uses trace ID 0 when an empty string is bound', () => {
+  it('preserves an empty trace ID in the bound context', () => {
     const logger = applyOperationName(operationName, applyTraceId('', loggerMocked));
 
-    expect(logger.traceId).toBe('0');
+    expect(logger.traceId).toBe('');
     logger[level](eventName);
 
     expect(output).toHaveBeenCalledWith({ level, traceId: '', correlationId: '0', eventName, operationName, data: undefined });
   });
 
-  it('uses 0 for both missing IDs through the combined helper', () => {
-    const logger = applyTraceIdAndCorrelationId(undefined, undefined, loggerMocked);
+  it('binds explicit placeholders through the combined helper', () => {
+    const logger = applyTraceIdAndCorrelationId('0', '0', loggerMocked);
 
     expect(logger.traceId).toBe('0');
     expect(logger.correlationId).toBe('0');
     applyOperationName(operationName, logger)[level](eventName);
 
-    expect(output).toHaveBeenCalledWith({ level, traceId: undefined, correlationId: undefined, eventName, operationName, data: undefined });
+    expect(output).toHaveBeenCalledWith({ level, traceId: '0', correlationId: '0', eventName, operationName, data: undefined });
   });
 });

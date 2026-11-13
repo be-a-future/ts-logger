@@ -95,8 +95,8 @@ describe('logger', () => {
     expect(rest).toEqual([serviceName, environment, defaultVersion, '0', '0', serviceName, 'info', eventName, operationName, `<key>:value${EOL}`]);
   });
 
-  it('logs correlation ID 0 when the combined helper binds a missing ID', async () => {
-    const requestLogger = applyTraceIdAndCorrelationId(traceId, undefined, logger());
+  it('logs correlation ID 0 when the combined helper binds an explicit placeholder', async () => {
+    const requestLogger = applyTraceIdAndCorrelationId(traceId, '0', logger());
     const operationLogger = applyOperationName(operationName, requestLogger);
 
     expect(operationLogger.correlationId).toBe('0');

@@ -44,21 +44,19 @@ export const applyCorrelationId: ApplyCorrelationId = curry((correlationId: stri
 }));
 
 type ApplyTraceIdAndCorrelationId = {
-  (traceId: Optional<string>, correlationId: Optional<string>): (logger: ILogger) => ILoggerWithTraceIdAndCorrelationId;
-  (traceId: Optional<string>, correlationId: Optional<string>, logger: ILogger): ILoggerWithTraceIdAndCorrelationId;
+  (traceId: string, correlationId: string): (logger: ILogger) => ILoggerWithTraceIdAndCorrelationId;
+  (traceId: string, correlationId: string, logger: ILogger): ILoggerWithTraceIdAndCorrelationId;
 };
 
-export const applyTraceIdAndCorrelationId: ApplyTraceIdAndCorrelationId = curry(
-  (traceId: string, correlationId: string, logger: ILogger): ILoggerWithTraceIdAndCorrelationId => ({
-    debug: logger.debug(traceId, correlationId),
-    info: logger.info(traceId, correlationId),
-    warn: logger.warn(traceId, correlationId),
-    error: logger.error(traceId, correlationId),
-    security: logger.security(traceId, correlationId),
-    traceId: traceId,
-    correlationId: correlationId,
-  }),
-);
+export const applyTraceIdAndCorrelationId: ApplyTraceIdAndCorrelationId = curry((traceId: string, correlationId: string, logger: ILogger): ILoggerWithTraceIdAndCorrelationId => ({
+  debug: logger.debug(traceId, correlationId),
+  info: logger.info(traceId, correlationId),
+  warn: logger.warn(traceId, correlationId),
+  error: logger.error(traceId, correlationId),
+  security: logger.security(traceId, correlationId),
+  traceId: traceId,
+  correlationId: correlationId,
+}));
 
 type ApplyOperationName = {
   (operationName: string): {

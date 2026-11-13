@@ -19,8 +19,6 @@ export type ILogWithTraceIdAndOperationName = {
 export type ILog = {
   (traceId: Optional<string>, correlationId: Optional<string>, eventName: string, operationName: string, data: Optional<object | string>): void;
   (traceId: Optional<string>, correlationId: Optional<string>): ILogWithTraceIdAndCorrelationId;
-  (traceId: Optional<string>, correlationId: Optional<string>, operationName: string): ILogWithTraceIdAndCorrelationIdAndOperationName;
-  (traceId: Optional<string>, operationName: string): ILogWithTraceIdAndOperationName;
   (traceId: Optional<string>): ILogWithTraceId;
 };
 

@@ -85,6 +85,17 @@ operationOnlyLogger.info('Order created', { orderId: '123' });
 
 The curried form `applyOperationName('createOrder')(serviceLogger)` works too. Operation loggers accept an event name and optional data. To include a correlation ID, bind it with `applyCorrelationId` before applying the operation name, as shown above.
 
+ID-binding helpers require strings. `applyTraceIdAndCorrelationId` requires both IDs in its direct and curried forms; use `'0'` for an explicit placeholder. Direct log calls still accept `undefined` IDs.
+
+Log methods support partial application of the trace ID or both IDs:
+
+```ts
+serviceLogger.info('trace-123')('request-123', 'Order created', 'createOrder', { orderId: '123' });
+serviceLogger.info('trace-123', 'request-123')('Order created', 'createOrder', { orderId: '123' });
+```
+
+Use `applyOperationName` to bind an operation name. Passing two arguments to a log method always binds IDs; it does not bind an operation name.
+
 
 ## Configuration
 
